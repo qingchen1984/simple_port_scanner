@@ -1,49 +1,5 @@
 #include "captpacket.h"
 
-const u_char printable( const u_char  c )
-{
-	if(c > 31 && c < 128)
-		return c;
-	else
-		return '.';
-}
-
-void print_payload( const u_char * payload, int len )
-{
-   	int line_width = 16;
-	int count = len / line_width;
-	int i = 0;
-	int index = 0;
-	char str[17] = {'\0'};
-
-	printf( "\n\n\n" );
-
-	while( count-- ){
-		for( i = 0; i < line_width; i++, index++ ){
-			printf( "%02X ", payload[index] );
-			str[i] = printable( payload[index] );
-		}
-		str[i] = '\0';
-		printf( "\t%s\n", str );
-	}
-	for( i = 0; i < line_width; i++, index++ ){
-		if( index < len ){
-			printf( "%02X ", payload[index] );
-			str[i] = printable( payload[index] );
-		}
-		else
-			printf( "   " );
-		str[i+1] = '\0';
-
-	}
-	printf( "\t%s\n", str );
-
-	printf( "\n\n\n" );
-}
-
-
-
-
 void tcp_protocol_packet_callback(
 	u_char *argument, const struct pcap_pkthdr* packet_header,
 	const u_char * packet_content )
@@ -74,20 +30,6 @@ void tcp_protocol_packet_callback(
 	u_int sequence;
 	u_int acknowledgement;
 
-	/* analysis the ip content  */
-/*	printf( "\n---------- IP Protocol ( Network Layer ) ----------\n" );
-	printf( "IP Version : %d\n", ip_protocol->ip_vhl/16 );
-	printf( "src addr :%s\n", inet_ntoa(ip_protocol->ip_src) );
-	printf( "dst addr :%s\n", inet_ntoa(ip_protocol->ip_dst) );
-	printf( "Header length : %d\n", ip_header_length );
-	printf( "TOS : %d\n", tos );
-	printf( "Total length : %d\n", ntohs( ip_protocol->ip_len ) );
-	printf( "Identification : %d\n", ntohs( ip_protocol->ip_id ) );
-	printf( "Offset : %d\n", ( offset & 0x1fff ) * 8 );
-	printf( "TTL : %d\n", ip_protocol->ip_ttl );  //time to live of IP
-	printf( "Protocol : %d\n", ip_protocol->ip_p );
-*/
-
 	/*get tcp protocol content, skip ethernet and IP header*/
 	tcp_protocol = ( struct sniff_tcp * )( packet_content+14+20 );
 	source_port = ntohs( tcp_protocol->th_sport );
@@ -100,59 +42,17 @@ void tcp_protocol_packet_callback(
 	flags = tcp_protocol->th_flags;
 	checksum = ntohs( tcp_protocol->th_sum );
 
-	printf( "\n---------- TCP Protocol ( Transport Layer ) ----------\n" );
-
-	printf( "%s", inet_ntoa(ip_protocol->ip_src) );
-	printf("---->");
-	printf( "%s\n", inet_ntoa(ip_protocol->ip_dst) );
-	printf( "Sorc Port : %d \n", source_port );
-	printf( "Dest Port : %d \n", destination_port );
-
-	service = getservbyport( htons(destination_port), NULL);
-	if(service != NULL ){
-		printf("the service is %s \n", service->s_name);
-		printf("the port is %d\n", ntohs(service->s_port));
-		printf("the protocol is %s \n", service->s_proto);
-	}
-
-/*	switch( destination_port ){
-	case 80 : printf( "HTTP protocol\n" ); break;
-	case 21 : printf( "FTP protocol\n" ); break;
-	case 23 : printf( "TELNET protocol\n" ); break;
-	case 25 : printf( "SMTP protocol\n" ); break;
-	case 110 : printf( "POP3 protocol\n" ); break;
-	default : break;
-	}
-
-	printf( "Sequence Number: %u\n", sequence );
-	printf( "Acknowledgement Number : %u\n", acknowledgement );
-	printf( "Header Length : %d\n", tcp_header_length );
-	printf( "Reserved : %d\n", tcp_protocol->th_offx2 );
-
-	printf( "Flags : " );
-	if( flags & 0x08 ) printf( "PSH " );
-	if( flags & 0x10 ) printf( "ACK " );
-	if( flags & 0x02 ) printf( "SYN " );
-	if( flags & 0x20 ) printf( "URG " );
-	if( flags & 0x01 ) printf( "FIN " );
-	if( flags & 0x04 ) printf( "RST " );
-	printf( "\n" );
-
-	printf( "Window Size : %d\n", windows );
-	printf( "Checksum : %d\n", checksum );
-	printf( "Urgent pointer : %d\n", urgent_pointer );
-	print_payload( packet_content, packet_header->len);
-*/
+	port_set[source_port] = '0';      //get msg means port not open.
 }
 
-void capture_package( char * dst_ip_str )
+void capture_packet(  )
 {
 	pcap_t* pcap_handle;
 	char error_content[PCAP_ERRBUF_SIZE];
 	char *net_interface;
 	struct bpf_program bpf_filter;
 	/* "" indicates capture all packet*/
-	char bpf_filter_string[] = "tcp";
+	char bpf_filter_string[64];
 	bpf_u_int32 net_mask;
 	bpf_u_int32 net_ip;
 
@@ -182,7 +82,7 @@ void capture_package( char * dst_ip_str )
 		exit(1);
 	}
 
-	//sprintf(bpf_filter_string, "src %s and dst %s tcp", net_ip, dst_ip_str);
+	sprintf(bpf_filter_string, "host %s and tcp", dst_ip_str);      /* filter rules */
 	/* compile the filter */
 	if( pcap_compile( pcap_handle, &bpf_filter,
                    bpf_filter_string, 0, net_ip ) == -1){
@@ -197,11 +97,18 @@ void capture_package( char * dst_ip_str )
 		exit(1);
 	}
 
-	//if( pcap_datalink( pcap_handle ) != DLT_EN10MB ) //return link layer type
-	//	return;
 	/* register the call back function, capture the packet in loop
 	   then, callback function analysis the packet */
 	pcap_loop( pcap_handle, -1, tcp_protocol_packet_callback, NULL );
+
 	pcap_close( pcap_handle );
 
+}
+
+void * thread_capture_packet( void * arg )
+{
+    printf("now in thread of capturing packet\n");
+    capture_packet( );
+    printf("now thread of capturing packet done\n");
+    return ( (void *)1 );
 }

@@ -1,5 +1,5 @@
-#ifndef CAPTPACKAGE_H
-#define CAPTPACKAGE_H
+#ifndef CAPTPACKET_H
+#define CAPTPACKET_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,8 +8,13 @@
 #include <sys/time.h>
 #include <time.h>
 #include <netdb.h>  	//getservbyport()
+#include <unistd.h>
+#include <signal.h>
+#include "portscan.h"
 
-void capture_packet(char *);
+void capture_packet( );
+
+void * thread_capture_packet( void * arg );
 
 
 /* default snap length (maximum bytes per packet to capture) */
@@ -19,7 +24,8 @@ void capture_packet(char *);
 #define SIZE_ETHERNET 14
 
 /* Ethernet addresses are 6 bytes */
-#define ETHER_ADDR_LEN 6
+/* Already defined in libnet */
+//#define ETHER_ADDR_LEN 6      /
 
 /* Ethernet header */
 struct sniff_ethernet {

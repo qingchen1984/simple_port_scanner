@@ -1,7 +1,7 @@
 SOURCES=main.c portscan.c buildpacket.c captpacket.c
 OBJECTS=main.o portscan.o buildpacket.o captpacket.o
 OPTIONS=-g -Wall
-LINK_FLAGS=-lnet -lpcap
+LINK_FLAGS=-lnet -lpcap -pthread
 TARGET=sps
 CC=cc
 

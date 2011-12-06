@@ -13,7 +13,6 @@ int main( int argc, char ** argv )
 {
 	int opt;
 	char type;
-	char * dst_ip_str;
 
 	type = '.';
 	while( ( opt = getopt(argc, argv, "s:f:") ) != -1 ){
@@ -39,7 +38,7 @@ int main( int argc, char ** argv )
 		exit(-1);
 	}
 
-	port_scan( type, dst_ip_str );
+	port_scan( type );
 	return 0;
 }
 

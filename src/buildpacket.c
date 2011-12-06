@@ -1,8 +1,6 @@
-#include <libnet.h>
-#include <stdlib.h>
 #include "buildpacket.h"
 
-void build_packet( char type, char * dst_ip_str )
+void build_packet( char type )
 {
 	u_char *cp;
 	libnet_t *l; //libnet context
@@ -17,8 +15,8 @@ void build_packet( char type, char * dst_ip_str )
 	int bytes_written;
 
 	int i;           //used for loop of sending packet
-	u_short start_port = 77;
-	u_short end_port = 100;
+	u_short start_port = 0;
+	u_short end_port = 65535;
 
 	u_int FLAG;     //syn or fin
 
@@ -136,13 +134,26 @@ void build_packet( char type, char * dst_ip_str )
 			 fprintf(stderr, "Error writing packet: %s\n",
 					 libnet_geterror(l));
 
-		 printf( "----> %s(%d)\n", dst_ip_str,dst_prt );
-
-
-		 /* Waiting 1 second between each packet */
-		 	 sleep(1);
+		 /* Waiting 10 micro-second between each packet */
+		 	 usleep(10);
 	 }
 
 	 libnet_destroy(l);
 	 return ;
+}
+
+void * thread_build_syn( void * arg )
+{
+    printf("now in thread of building syn packet\n");
+	build_packet( 's' );
+	printf("now thread of building syn packet done\n");
+	return ( ( void * )1 );
+}
+
+void * thread_build_fin( void * arg )
+{
+    printf("now in thread of building fin packet\n");
+	build_packet( 'f' );
+    printf("now thread of building fin packet done\n");
+	return ( ( void * )1 );
 }
